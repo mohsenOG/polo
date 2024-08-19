@@ -9,8 +9,8 @@ class AlgorithmFixedPrices:
         self.data = []
         self.counter = 0  # Counter to track onNewData calls
         self.last_message_time = None  # Track the last message sent time
-        self.current_buy_price = .0
-        self.current_sell_price = .0
+        self.current_buy_price = None
+        self.current_sell_price = None
         self.prices_calculated = False  # Flag to track if prices are calculated
 
     async def onNewData(self, new_data):
@@ -54,6 +54,12 @@ class AlgorithmFixedPrices:
         now = datetime.now()
         if self.last_message_time and now - self.last_message_time < timedelta(minutes=5):
             return  # Do not send message if within cooldown period
+
+        # If it's the first time or current prices are not set, initialize them
+        if self.current_buy_price is None or self.current_sell_price is None:
+            self.current_buy_price = new_buy_price
+            self.current_sell_price = new_sell_price
+            return  # Do not send a signal on the first pass
 
         # Algorithm logic
         if close >= self.current_sell_price:
