@@ -105,13 +105,15 @@ class AlgorithmSmaRelatedPrices:
             print(msg)
 
 
+from datetime import datetime, timedelta
+
 class AlgorithmFixedPrices:
     def __init__(self):
         self.bot = TelegramBot()
         self.counter = 0  # Counter to track onNewData calls
-        self.last_message_time = None  # Track the last message sent time
         self.current_buy_price = FIXED_BUY_PRICE
         self.current_sell_price = FIXED_SELL_PRICE
+        self.last_signal_type = None  # Track the type of the last signal sent
 
     async def onNewData(self, new_data):
         self.counter += 1
@@ -120,32 +122,29 @@ class AlgorithmFixedPrices:
             return
         close = float(data['close'])
         
-        # Check cooldown (5 minutes)
-        now = datetime.now()
-        if self.last_message_time and now - self.last_message_time < timedelta(minutes=5):
-            return  # Do not send message if within cooldown period
-
         # Algorithm logic using fixed prices
         if close >= self.current_sell_price:
-            msg = (f'Sell Alert!! WST-USDT -->\n'
-                   f'close_price: {close}\n'
-                   f'buy_price: {self.current_buy_price}\n'
-                   f'sell_price: {self.current_sell_price}\n'
-                   f'Open a buy position at buy price.')
-            await self.bot.send_message(msg)
-            self.last_message_time = now  # Update last message time
+            if self.last_signal_type != 'sell':
+                msg = (f'Sell Alert!! WST-USDT -->\n'
+                       f'close_price: {close}\n'
+                       f'buy_price: {self.current_buy_price}\n'
+                       f'sell_price: {self.current_sell_price}\n'
+                       f'Open a buy position at buy price.')
+                await self.bot.send_message(msg)
+                self.last_signal_type = 'sell'  # Update the last signal type
 
         elif close <= self.current_buy_price:
-            msg = (f'Buy Alert!! WST-USDT -->\n'
-                   f'close_price: {close}\n'
-                   f'buy_price: {self.current_buy_price}\n'
-                   f'sell_price: {self.current_sell_price}\n'
-                   f'Open a sell position at buy price.')
-            await self.bot.send_message(msg)
-            self.last_message_time = now  # Update last message time
+            if self.last_signal_type != 'buy':
+                msg = (f'Buy Alert!! WST-USDT -->\n'
+                       f'close_price: {close}\n'
+                       f'buy_price: {self.current_buy_price}\n'
+                       f'sell_price: {self.current_sell_price}\n'
+                       f'Open a sell position at buy price.')
+                await self.bot.send_message(msg)
+                self.last_signal_type = 'buy'  # Update the last signal type
 
         # Add timestamp to the message
-        timestamp = now.strftime('%d-%m-%Y %H:%M:%S')
+        timestamp = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
         msg = (f'{timestamp} - WST-USDT :: close price= {close}, '
                f'buy_price= {self.current_buy_price}, '
                f'sell_price= {self.current_sell_price}')
