@@ -1,5 +1,6 @@
 import telegram
 import asyncio
+import platform
 
 # Define your credentials and message
 API_KEY = ''
@@ -8,7 +9,8 @@ CHAT_ID_SANAZ = ''
 CHAT_IDS = [CHAT_ID_MOHSEN, CHAT_ID_SANAZ]
 
 # Ensure compatibility with Windows event loop policy
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 class TelegramBot:
     def __init__(self):
