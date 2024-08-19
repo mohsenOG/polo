@@ -108,7 +108,6 @@ class AlgorithmSmaRelatedPrices:
 class AlgorithmFixedPrices:
     def __init__(self):
         self.bot = TelegramBot()
-        self.data = []
         self.counter = 0  # Counter to track onNewData calls
         self.last_message_time = None  # Track the last message sent time
         self.current_buy_price = FIXED_BUY_PRICE
@@ -119,21 +118,8 @@ class AlgorithmFixedPrices:
         data = new_data[0]
         if data['symbol'] != 'WSTUSDT_USDT':
             return
-
-        # Append new data to the list and Convert the data to a DataFrame
-        self.data.append(data)
-        df = pd.DataFrame(self.data)
-        if len(df) < 10:
-            return
-
-        # Ensure required columns exist
-        if 'close' not in df.columns:
-            return
-
-        # Convert 'close' column to float
-        df['close'] = df['close'].astype(float)
-        close = df['close'].iloc[-1]
-
+        close = float(data['close'])
+        
         # Check cooldown (5 minutes)
         now = datetime.now()
         if self.last_message_time and now - self.last_message_time < timedelta(minutes=5):
@@ -143,16 +129,18 @@ class AlgorithmFixedPrices:
         if close >= self.current_sell_price:
             msg = (f'Sell Alert!! WST-USDT -->\n'
                    f'close_price: {close}\n'
+                   f'buy_price: {self.current_sell_price}\n'
                    f'sell_price: {self.current_sell_price}\n'
-                   f'Using fixed sell price....')
+                   f'Open a buy position at buy price.')
             await self.bot.send_message(msg)
             self.last_message_time = now  # Update last message time
 
         elif close <= self.current_buy_price:
             msg = (f'Buy Alert!! WST-USDT -->\n'
                    f'close_price: {close}\n'
-                   f'buy_price: {self.current_buy_price}\n'
-                   f'Using fixed buy price....')
+                   f'buy_price: {self.current_sell_price}\n'
+                   f'sell_price: {self.current_sell_price}\n'
+                   f'Open a sell position at buy price.')
             await self.bot.send_message(msg)
             self.last_message_time = now  # Update last message time
 
