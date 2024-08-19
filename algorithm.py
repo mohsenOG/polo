@@ -1,5 +1,4 @@
 import ta
-import math
 from bot import TelegramBot
 from datetime import datetime, timedelta
 import pandas as pd
@@ -10,6 +9,9 @@ class AlgorithmFixedPrices:
         self.data = []
         self.counter = 0  # Counter to track onNewData calls
         self.last_message_time = None  # Track the last message sent time
+        self.current_buy_price = .0
+        self.current_sell_price = .0
+        self.prices_calculated = False  # Flag to track if prices are calculated
 
     async def onNewData(self, new_data):
         self.counter += 1
@@ -27,7 +29,7 @@ class AlgorithmFixedPrices:
         if 'close' not in df.columns or 'high' not in df.columns or 'low' not in df.columns:
             return
 
-        # Calculate SMA, high, and low
+        # Convert columns to float
         df['close'] = df['close'].astype(float)
         df['high'] = df['high'].astype(float)
         df['low'] = df['low'].astype(float)
@@ -45,8 +47,8 @@ class AlgorithmFixedPrices:
         one_plus_percentage_range_sma10_rounded = 1.0 + percentage_range_sma10_rounded
         one_minus_percentage_range_sma10_rounded = 1.0 - percentage_range_sma10_rounded
 
-        buy_price = sma10 * one_minus_percentage_range_sma10_rounded
-        sell_price = sma10 * one_plus_percentage_range_sma10_rounded
+        new_buy_price = sma10 * one_minus_percentage_range_sma10_rounded
+        new_sell_price = sma10 * one_plus_percentage_range_sma10_rounded
 
         # Check cooldown (5 minutes)
         now = datetime.now()
@@ -54,19 +56,38 @@ class AlgorithmFixedPrices:
             return  # Do not send message if within cooldown period
 
         # Algorithm logic
-        if close >= sell_price:
-            msg = f'Sell Alert!! WST-USDT -->\nclose_price: {close}\nbuy_price= {buy_price}\nsell_price= {sell_price}\nCreate a new buy position with buy price....'
+        if close >= self.current_sell_price:
+            msg = (f'Sell Alert!! WST-USDT -->\n'
+                   f'close_price: {close}\n'
+                   f'sell_price: {self.current_sell_price}\n'
+                   f'new_buy_price= {new_buy_price}\n'
+                   f'Create a new buy position with new buy price....')
             await self.bot.send_message(msg)
             self.last_message_time = now  # Update last message time
-        elif close <= buy_price:
-            msg = f'Buy Alert!! WST-USDT -->\nclose_price: {close}\nbuy_price= {buy_price}\nsell_price= {sell_price}\nCreat a new sell position with sell price...'
+            # Update current prices after sending message
+            self.current_buy_price = new_buy_price
+            self.current_sell_price = new_sell_price
+            self.prices_calculated = True  # Set flag to indicate prices have been recalculated
+        elif close <= self.current_buy_price:
+            msg = (f'Buy Alert!! WST-USDT -->\n'
+                   f'close_price: {close}\n'
+                   f'buy_price: {self.current_buy_price}\n'
+                   f'new_sell_price= {new_sell_price}\n'
+                   f'Create a new sell position with new sell price...')
             await self.bot.send_message(msg)
             self.last_message_time = now  # Update last message time
+            # Update current prices after sending message
+            self.current_buy_price = new_buy_price
+            self.current_sell_price = new_sell_price
+            self.prices_calculated = True  # Set flag to indicate prices have been recalculated
 
         # Add timestamp to the message
         timestamp = now.strftime('%d-%m-%Y %H:%M:%S')
         true_percentage = percentage_range_sma10 * 2.0
-        msg = f'{timestamp} - WST-USDT :: close price= {close}, buy_price= {round(buy_price, 2)}, sell_price={round(sell_price, 2)}, percentage={round(true_percentage, 2)}'
+        msg = (f'{timestamp} - WST-USDT :: close price= {close}, '
+               f'buy_price= {round(self.current_buy_price, 2)}, '
+               f'sell_price={round(self.current_sell_price, 2)}, '
+               f'percentage={round(true_percentage, 2)}')
 
         # Print the message every 20 calls to onNewData
         if self.counter % 20 == 0:
