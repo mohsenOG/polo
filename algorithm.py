@@ -129,7 +129,7 @@ class AlgorithmFixedPrices:
         if close >= self.current_sell_price:
             msg = (f'Sell Alert!! WST-USDT -->\n'
                    f'close_price: {close}\n'
-                   f'buy_price: {self.current_sell_price}\n'
+                   f'buy_price: {self.current_buy_price}\n'
                    f'sell_price: {self.current_sell_price}\n'
                    f'Open a buy position at buy price.')
             await self.bot.send_message(msg)
@@ -138,7 +138,7 @@ class AlgorithmFixedPrices:
         elif close <= self.current_buy_price:
             msg = (f'Buy Alert!! WST-USDT -->\n'
                    f'close_price: {close}\n'
-                   f'buy_price: {self.current_sell_price}\n'
+                   f'buy_price: {self.current_buy_price}\n'
                    f'sell_price: {self.current_sell_price}\n'
                    f'Open a sell position at buy price.')
             await self.bot.send_message(msg)
