@@ -3,7 +3,11 @@ from bot import TelegramBot
 from datetime import datetime, timedelta
 import pandas as pd
 
-class AlgorithmFixedPrices:
+# Global variables for fixed buy and sell prices
+FIXED_BUY_PRICE = 0.994
+FIXED_SELL_PRICE = 1.04
+
+class AlgorithmSmaRelatedPrices:
     def __init__(self):
         self.bot = TelegramBot()
         self.data = []
@@ -94,6 +98,69 @@ class AlgorithmFixedPrices:
                f'buy_price= {round(self.current_buy_price, 2)}, '
                f'sell_price={round(self.current_sell_price, 2)}, '
                f'percentage={round(true_percentage, 2)}')
+
+        # Print the message every 20 calls to onNewData
+        if self.counter % 20 == 0:
+            self.counter = 0
+            print(msg)
+
+
+class AlgorithmFixedPrices:
+    def __init__(self):
+        self.bot = TelegramBot()
+        self.data = []
+        self.counter = 0  # Counter to track onNewData calls
+        self.last_message_time = None  # Track the last message sent time
+        self.current_buy_price = FIXED_BUY_PRICE
+        self.current_sell_price = FIXED_SELL_PRICE
+
+    async def onNewData(self, new_data):
+        self.counter += 1
+        data = new_data[0]
+        if data['symbol'] != 'WSTUSDT_USDT':
+            return
+
+        # Append new data to the list and Convert the data to a DataFrame
+        self.data.append(data)
+        df = pd.DataFrame(self.data)
+        if len(df) < 10:
+            return
+
+        # Ensure required columns exist
+        if 'close' not in df.columns:
+            return
+
+        # Convert 'close' column to float
+        df['close'] = df['close'].astype(float)
+        close = df['close'].iloc[-1]
+
+        # Check cooldown (5 minutes)
+        now = datetime.now()
+        if self.last_message_time and now - self.last_message_time < timedelta(minutes=5):
+            return  # Do not send message if within cooldown period
+
+        # Algorithm logic using fixed prices
+        if close >= self.current_sell_price:
+            msg = (f'Sell Alert!! WST-USDT -->\n'
+                   f'close_price: {close}\n'
+                   f'sell_price: {self.current_sell_price}\n'
+                   f'Using fixed sell price....')
+            await self.bot.send_message(msg)
+            self.last_message_time = now  # Update last message time
+
+        elif close <= self.current_buy_price:
+            msg = (f'Buy Alert!! WST-USDT -->\n'
+                   f'close_price: {close}\n'
+                   f'buy_price: {self.current_buy_price}\n'
+                   f'Using fixed buy price....')
+            await self.bot.send_message(msg)
+            self.last_message_time = now  # Update last message time
+
+        # Add timestamp to the message
+        timestamp = now.strftime('%d-%m-%Y %H:%M:%S')
+        msg = (f'{timestamp} - WST-USDT :: close price= {close}, '
+               f'buy_price= {self.current_buy_price}, '
+               f'sell_price= {self.current_sell_price}')
 
         # Print the message every 20 calls to onNewData
         if self.counter % 20 == 0:
